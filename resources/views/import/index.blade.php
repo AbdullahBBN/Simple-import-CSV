@@ -5,7 +5,9 @@
     </head>
 
 <body>
-
+    @if(Session::has('message'))
+        <p class="alert alert-success">{{ Session::get('message') }}</p>
+    @endif
     <form id="form1" action="/import" method="post" enctype="multipart/form-data" style="margin: 10px;">
         @csrf
         <div class="form-group">

@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Imports\ProductsImport;
 use App\Models\Product;
+use App\Repositories\ProductRepository;
+use App\Services\ProductService;
 use http\Client\Response;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -12,31 +14,26 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class ProductController extends Controller
 {
-    /**
-     * @desc Importing CSV file using Execl package and return to home page
-     */
+    private $productRepo;
+
+    public function __construct(ProductRepository $productRepository)
+    {
+        $this->productRepo = $productRepository;
+    }
 
     /**
-     * Runs the process.
-     *
-     * The callback receives the type of output (out or err) and
-     * some bytes from the output in real-time. It allows to have feedback
-     * from the independent process during execution.
-     *
-     * The STDOUT and STDERR are also available after the process is finished
-     * via the getOutput() and getErrorOutput() methods.
-     * @return \Illuminate\Http\Response redirect
+     * @desc Importing CSV file using Execl package and return to home page
      */
     public function importCSVFile(Request $request){
         $importFile = $request->file("csv");
 
-        Excel::import(new ProductsImport, $importFile);
+        Excel::import(new ProductsImport(), $importFile);
 
-        return redirect()->route("home");
+        return redirect()->route("home")->with("message", "Successfully started the import process");
     }
 
     public function removeAll(Request $request){
-        Product::truncate();
+        $this->productRepo->removeAll();
         if(Cache::has("products")){
             Cache::forget("products");
         }
@@ -44,7 +41,7 @@ class ProductController extends Controller
 
     public function getSingleProduct(Request $request){
         $name = $request->get("name");
-        $product = Product::where("product_name",$name)->firstOrFail();
+        $product = $this->productRepo->findOneByName($name);
         return $product;
     }
 
@@ -58,7 +55,7 @@ class ProductController extends Controller
             return Cache::get("products");
         }
 
-        $products = Product::paginate(10);
+        $products = $this->productRepo->findAll();
 
         Cache::put("products",$products,3600);
 
